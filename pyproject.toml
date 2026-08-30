@@ -1,0 +1,51 @@
+[project]
+name = "omsu-schedule-scraper"
+version = "0.1.0"
+description = "Скрапер расписания ОмГУ (eservice.omsu.ru): синхронизация в Google Calendar и HTML-аналитика"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.31.0",
+    "PyYAML>=6.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML",
+    "types-requests",
+]
+
+# Плоская раскладка: пакеты-слои лежат в корне репозитория.
+[tool.setuptools]
+py-modules = ["config", "main", "analytics"]
+packages = ["domain", "application", "infrastructure", "presentation"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# Длинные f-string-шаблоны в HTML-отчёте разбивать по строкам нет смысла.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E741"]
+
+[tool.mypy]
+python_version = "3.9"
+files = ["domain", "application", "infrastructure", "presentation", "config.py", "main.py", "analytics.py"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

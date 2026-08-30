@@ -1,0 +1,13 @@
+venv/
+config.yaml
+credentials.json
+token.json
+sync.log
+report.html
+data/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

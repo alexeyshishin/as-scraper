@@ -1,0 +1,122 @@
+# omsu-schedule-scraper
+
+Скрапер расписания ОмГУ (eservice.omsu.ru) с синхронизацией в отдельный календарь Google Calendar. Работает для любой группы, преподавателя или аудитории — не только для одной конкретной группы.
+
+## Архитектура
+
+```
+domain/           бизнес-логика, без внешних зависимостей
+  models.py         Lesson, DirectoryEntry, CalendarEvent, ChangeEvent, ScheduleSnapshotEntry
+  bell_schedule.py  номер пары -> время начала/конца
+  resolver.py       выбор одной пары на слот (только для type: group)
+  event_factory.py  Lesson -> CalendarEvent, sync_key
+  semester.py       определение границ текущего семестра по самим данным
+  snapshot_diff.py  сравнение двух снепшотов расписания -> отмены/переносы
+  analytics.py      подсчёт метрик нагрузки/предметов/географии/динамики
+
+infrastructure/   работа с внешним миром
+  omsu_directory.py  справочник групп/преподавателей/аудиторий, поиск по имени
+  omsu_api.py        HTTP-клиент расписания eservice.omsu.ru -> list[Lesson]
+  google_calendar.py OAuth2 + CRUD событий в Google Calendar
+  snapshot_store.py  хранение снепшота расписания и журнала изменений на диске
+
+application/      оркестрация use case
+  ports.py             Protocol-порты (Schedule/Directory/Calendar/SnapshotStore) — слой
+                       зависит от них, а не от конкретной infrastructure
+  sync_service.py      fetch -> resolve -> build -> sync (календарь)
+  analytics_service.py fetch -> diff -> metrics (аналитика)
+
+presentation/     представление
+  html_report.py    AnalyticsReport -> самодостаточный HTML-отчёт
+  cli.py            обвязка CLI: известные ошибки -> понятные сообщения и код возврата
+
+config.py         AppConfig, чтение config.yaml
+main.py           CLI синхронизации с календарём, composition root
+analytics.py      CLI сборки HTML-отчёта, composition root
+
+tests/            pytest на доменную логику (без сети)
+pyproject.toml    зависимости, dev-инструменты, конфиг ruff/mypy/pytest
+```
+
+Направление зависимостей строго внутрь: `infrastructure` реализует порты из
+`application/ports.py` структурно (без наследования), поэтому `application` и
+`domain` ничего не знают о `requests`/Google. Проверяется `mypy`.
+
+## Разработка
+
+```bash
+make install-dev   # доустановить pytest / ruff / mypy
+make test          # прогнать тесты
+make lint          # ruff + mypy
+```
+
+## Установка
+
+```bash
+make install
+cp config.example.yaml config.yaml
+```
+
+Отредактируй `config.yaml`:
+
+```yaml
+schedule:
+  type: group          # group | tutor | auditory
+  query: "МИБ-401-О-02" # имя (ищется по справочнику) или числовой id
+```
+
+Для `type: group` дополнительно можно задать `subgroup` и `teacher_overrides` — см. комментарии в `config.example.yaml`.
+
+## Google Calendar API
+
+1. https://console.cloud.google.com/ → новый проект.
+2. APIs & Services → Library → включить **Google Calendar API**.
+3. APIs & Services → OAuth consent screen → External → добавить свой email в Test users.
+4. APIs & Services → Credentials → Create Credentials → OAuth client ID → **Desktop app**.
+5. Скачать JSON, положить в корень проекта как `credentials.json`.
+
+## Запуск
+
+```bash
+make check   # dry-run, календарь не трогается
+make sync    # синхронизировать (при первом запуске откроется браузер для входа в Google)
+```
+
+Скрапер сам создаёт отдельный календарь (по умолчанию `ОмГУ: <имя сущности>`). Повторные запуски идемпотентны: создают новые пары, обновляют изменившиеся (замены), удаляют пропавшие из расписания.
+
+Если в выводе появляется предупреждение про неоднозначные пары (физкультура/иностранный) — впиши нужного преподавателя в `teacher_overrides` в `config.yaml` и запусти снова. Актуально только для `type: group`.
+
+## Аналитика расписания
+
+```bash
+make report            # собрать report.html и открыть его в браузере
+make report ARGS=--no-open   # собрать, но не открывать
+```
+
+Строит самодостаточную HTML-страницу (без интернета и внешних библиотек) с метриками за текущий семестр (границы определяются автоматически по разрывам в датах занятий, без привязки к конкретному учебному календарю):
+
+- **Нагрузка**: часы по типам занятий, часы в окнах между парами, число учебных дней в неделю, пары до `analytics.early_hour` / после `analytics.late_hour`.
+- **Предметы и преподаватели**: топ дисциплин и преподавателей по часам, разбивка дисциплины на лекции/практики/лабы (форма контроля — экзамен/зачёт — API не отдаёт, поэтому вместо неё показана структура нагрузки как ближайший доступный прокси).
+- **География**: смены корпусов в течение дня, самые загруженные аудитории и корпуса (здания резолвятся через справочник аудиторий, а не парсингом номера).
+- **Динамика**: нагрузка по неделям семестра, сравнение нечётных/чётных недель (ОмГУ публикует расписание конкретными датами, а не числителем/знаменателем, поэтому это ближайший аналог).
+- **Отмены и переносы**: при каждом запуске `make report` текущее расписание сравнивается с локальным снепшотом (`data/schedule_snapshot.json`) — пропавшие пары считаются отменёнными, пары с изменившимся преподавателем/аудиторией — перенесёнными. История событий копится в `data/change_log.jsonl`, отчёт по ней растёт от запуска к запуску. При самом первом запуске сравнивать не с чем — эта секция наполнится со второго прогона.
+
+Настройки — необязательная секция `analytics` в `config.yaml`:
+
+```yaml
+analytics:
+  early_hour: "09:00"
+  late_hour: "18:00"
+  snapshot_horizon_days: 90   # какой горизонт вперёд отслеживать на отмены/переносы
+  semester_gap_days: 21       # разрыв в днях, который считается концом семестра/каникулами
+  report_path: "report.html"
+```
+
+## Источники данных
+
+Оба эндпоинта не документированы официально, найдены реверсом JS-бандла фронтенда `https://eservice.omsu.ru/schedule/#/schedule/...`. Публичные, без авторизации:
+
+- `GET /schedule/backend/dict/{groups|tutors|auditories}` — справочник всех групп/преподавателей/аудиторий (`id`, `name`), используется для поиска по имени.
+- `GET /schedule/backend/schedule/{group|tutor|auditory}/{id}` — само расписание.
+
+Время пар не приходит в API — используется официальный приказ ОмГУ №01-18/44 от 22.06.2022 (действует до 27.09.2026), зашит в `domain/bell_schedule.py`.
