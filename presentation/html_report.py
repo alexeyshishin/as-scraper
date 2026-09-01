@@ -55,15 +55,15 @@ def render_type_chart(by_type: list[TypeStat]) -> str:
         f"""
         <div class="bar-row">
           <div class="bar-label">{esc(t.type_work)}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:{t.hours / max_hours * 100:.1f}%; background: var({colors[t.type_work]})" title="{esc(t.type_work)}: {t.hours} ч, {t.lessons} пар"></div></div>
-          <div class="bar-value">{t.hours} ч · {t.lessons} пар</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{t.hours / max_hours * 100:.1f}%; background: var({colors[t.type_work]})" title="{esc(t.type_work)}: {t.hours} акад. ч., {t.lessons} пар"></div></div>
+          <div class="bar-value">{t.hours} акад. ч. · {t.lessons} пар</div>
         </div>"""
         for t in by_type
     )
     return f'<div class="legend">{legend}</div><div class="bar-chart">{rows}</div>'
 
 
-def render_rank_list(items: list[tuple[str, float, str]], unit: str = "ч") -> str:
+def render_rank_list(items: list[tuple[str, float, str]], unit: str = "акад. ч.") -> str:
     if not items:
         return '<p class="muted">Нет данных.</p>'
     max_v = max(v for _, v, _ in items) or 1.0
@@ -102,7 +102,7 @@ def render_week_timeline(weeks: list[WeekLoad]) -> str:
     bars = "".join(
         f"""
         <div class="week-col">
-          <div class="week-bar" style="height:{max(w.hours / max_v * 100, 2):.1f}%" title="{esc(w.label)} ({w.start_date.strftime('%d.%m')}): {w.hours} ч, {'нечётная' if w.parity == 'odd' else 'чётная'} неделя"></div>
+          <div class="week-bar" style="height:{max(w.hours / max_v * 100, 2):.1f}%" title="{esc(w.label)} ({w.start_date.strftime('%d.%m')}): {w.hours} акад. ч., {'нечётная' if w.parity == 'odd' else 'чётная'} неделя"></div>
           <div class="week-tick">{esc(f'W{w.iso_week}') if i % show_label_every == 0 else ''}</div>
         </div>"""
         for i, w in enumerate(weeks)
@@ -120,13 +120,13 @@ def render_parity_comparison(odd_avg: float, even_avg: float) -> str:
     <div class="bar-chart">
       <div class="bar-row">
         <div class="bar-label">Нечётные</div>
-        <div class="bar-track"><div class="bar-fill" style="width:{odd_avg / max_v * 100:.1f}%; background: var(--series-1)" title="В среднем {odd_avg} ч"></div></div>
-        <div class="bar-value">{odd_avg} ч</div>
+        <div class="bar-track"><div class="bar-fill" style="width:{odd_avg / max_v * 100:.1f}%; background: var(--series-1)" title="В среднем {odd_avg} акад. ч."></div></div>
+        <div class="bar-value">{odd_avg} акад. ч.</div>
       </div>
       <div class="bar-row">
         <div class="bar-label">Чётные</div>
-        <div class="bar-track"><div class="bar-fill" style="width:{even_avg / max_v * 100:.1f}%; background: var(--series-2)" title="В среднем {even_avg} ч"></div></div>
-        <div class="bar-value">{even_avg} ч</div>
+        <div class="bar-track"><div class="bar-fill" style="width:{even_avg / max_v * 100:.1f}%; background: var(--series-2)" title="В среднем {even_avg} акад. ч."></div></div>
+        <div class="bar-value">{even_avg} акад. ч.</div>
       </div>
     </div>"""
 
@@ -150,7 +150,7 @@ def render_discipline_table(disciplines: list[DisciplineStat]) -> str:
     return f"""
     <div class="table-wrap">
     <table>
-      <thead><tr><th>Дисциплина</th><th>Часы</th><th>Доля</th><th>Лек</th><th>Прак</th><th>Лаб</th><th>Преподаватели</th></tr></thead>
+      <thead><tr><th>Дисциплина</th><th>Акад. ч.</th><th>Доля</th><th>Лек</th><th>Прак</th><th>Лаб</th><th>Преподаватели</th></tr></thead>
       <tbody>{rows}</tbody>
     </table>
     </div>"""
@@ -172,7 +172,7 @@ def render_teacher_table(teachers: list[TeacherStat]) -> str:
     return f"""
     <div class="table-wrap">
     <table>
-      <thead><tr><th>Преподаватель</th><th>Часы</th><th>Доля</th><th>Дисциплины</th></tr></thead>
+      <thead><tr><th>Преподаватель</th><th>Акад. ч.</th><th>Доля</th><th>Дисциплины</th></tr></thead>
       <tbody>{rows}</tbody>
     </table>
     </div>"""
@@ -353,9 +353,8 @@ def build_html(report: AnalyticsReport) -> str:
   </header>
 
   <div class="tiles">
-    {render_stat_tile("Всего часов за период", f"{w.total_hours} ч")}
+    {render_stat_tile("Всего часов за период", f"{w.total_hours} акад. ч.")}
     {render_stat_tile("Учебных дней", f"{w.study_days_count}", f"~{w.study_days_per_week_avg} дней/нед.")}
-    {render_stat_tile("Часов в окнах", f"{w.gap_hours_total} ч", f"~{w.gap_hours_avg_per_study_day} ч/учебный день")}
     {render_stat_tile(f"Пар раньше {w.early_threshold}", str(w.early_count))}
     {render_stat_tile(f"Пар после {w.late_threshold}", str(w.late_count))}
     {render_stat_tile("Смен корпусов за день", f"~{g.building_changes_avg_per_day}", f"{g.days_with_change} дней со сменой")}

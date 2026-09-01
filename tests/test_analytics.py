@@ -14,9 +14,10 @@ from domain.analytics import (
 from tests.conftest import make_lesson
 
 
-def test_lesson_hours_first_slot():
-    # 08:45–10:20 = 95 минут ≈ 1.583 ч
-    assert round(lesson_hours(make_lesson(time_slot=1)), 2) == 1.58
+def test_lesson_hours_is_two_academic_hours():
+    # Одна пара = 2 академических часа, независимо от слота
+    assert lesson_hours(make_lesson(time_slot=1)) == 2.0
+    assert lesson_hours(make_lesson(time_slot=6)) == 2.0
 
 
 def test_extract_building_variants():
@@ -31,6 +32,7 @@ def test_workload_counts_early_late():
     late = make_lesson(external_id=2, time_slot=6)    # заканчивается 19:35
     w = compute_workload([early, late], early_hour=time(9, 0), late_hour=time(18, 0))
     assert w.total_lessons == 2
+    assert w.total_hours == 2 * w.total_lessons  # 2 акад. часа на пару
     assert w.early_count == 1
     assert w.late_count == 1
     assert w.study_days_count == 1

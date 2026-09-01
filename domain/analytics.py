@@ -9,12 +9,13 @@ from domain.models import ChangeEvent, Lesson, ScheduleType
 
 WEEKDAY_NAMES_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
+# Одна пара = 2 академических часа (по регламенту ОмГУ), независимо от реальной
+# длительности слота по звонку (~95 мин). Все агрегаты часов считаются в акад. часах.
+ACADEMIC_HOURS_PER_LESSON = 2.0
+
 
 def lesson_hours(lesson: Lesson) -> float:
-    start, end = slot_to_times(lesson.time_slot)
-    start_dt = datetime.combine(lesson.date, start)
-    end_dt = datetime.combine(lesson.date, end)
-    return (end_dt - start_dt).total_seconds() / 3600
+    return ACADEMIC_HOURS_PER_LESSON
 
 
 def extract_building(room: str) -> str:
@@ -40,8 +41,6 @@ class WorkloadMetrics:
     by_type: list[TypeStat]
     total_lessons: int
     total_hours: float
-    gap_hours_total: float
-    gap_hours_avg_per_study_day: float
     study_days_count: int
     weeks_count: int
     study_days_per_week_avg: float
@@ -145,16 +144,6 @@ def compute_workload(lessons: list[Lesson], early_hour: time, late_hour: time) -
         if end >= late_hour:
             late_count += 1
 
-    gap_hours_total = 0.0
-    for day, day_lessons in lessons_by_day.items():
-        slots = sorted({lesson.time_slot for lesson in day_lessons})
-        for a, b in zip(slots, slots[1:]):
-            if b - a <= 1:
-                continue
-            _, end_a = slot_to_times(a)
-            start_b, _ = slot_to_times(b)
-            gap_hours_total += (datetime.combine(day, start_b) - datetime.combine(day, end_a)).total_seconds() / 3600
-
     study_days = sorted(lessons_by_day.keys())
     study_days_count = len(study_days)
 
@@ -176,8 +165,6 @@ def compute_workload(lessons: list[Lesson], early_hour: time, late_hour: time) -
         by_type=by_type,
         total_lessons=len(lessons),
         total_hours=round(total_hours, 1),
-        gap_hours_total=round(gap_hours_total, 1),
-        gap_hours_avg_per_study_day=round(gap_hours_total / study_days_count, 2) if study_days_count else 0.0,
         study_days_count=study_days_count,
         weeks_count=weeks_count,
         study_days_per_week_avg=round(study_days_count / weeks_count, 2) if weeks_count else 0.0,
