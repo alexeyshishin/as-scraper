@@ -5,37 +5,16 @@
 ## Архитектура
 
 ```
-domain/           бизнес-логика, без внешних зависимостей
-  models.py         Lesson, DirectoryEntry, CalendarEvent, ChangeEvent, ScheduleSnapshotEntry
-  bell_schedule.py  номер пары -> время начала/конца
-  resolver.py       выбор одной пары на слот (только для type: group)
-  event_factory.py  Lesson -> CalendarEvent, sync_key
-  semester.py       определение границ текущего семестра по самим данным
-  snapshot_diff.py  сравнение двух снепшотов расписания -> отмены/переносы
-  analytics.py      подсчёт метрик нагрузки/предметов/географии/динамики
-
-infrastructure/   работа с внешним миром
-  omsu_directory.py  справочник групп/преподавателей/аудиторий, поиск по имени
-  omsu_api.py        HTTP-клиент расписания eservice.omsu.ru -> list[Lesson]
-  google_calendar.py OAuth2 + CRUD событий в Google Calendar
-  snapshot_store.py  хранение снепшота расписания и журнала изменений на диске
-
-application/      оркестрация use case
-  ports.py             Protocol-порты (Schedule/Directory/Calendar/SnapshotStore) — слой
-                       зависит от них, а не от конкретной infrastructure
-  sync_service.py      fetch -> resolve -> build -> sync (календарь)
-  analytics_service.py fetch -> diff -> metrics (аналитика)
-
-presentation/     представление
-  html_report.py    AnalyticsReport -> самодостаточный HTML-отчёт
-  cli.py            обвязка CLI: известные ошибки -> понятные сообщения и код возврата
-
-config.py         AppConfig, чтение config.yaml
-main.py           CLI синхронизации с календарём, composition root
-analytics.py      CLI сборки HTML-отчёта, composition root
-
-tests/            pytest на доменную логику (без сети)
-pyproject.toml    зависимости, dev-инструменты, конфиг ruff/mypy/pytest
+as-scraper/
+├── domain/           чистая бизнес-логика: модели, резолвер пар, семестр, диффы, метрики
+├── infrastructure/   внешний мир: API ОмГУ, справочник, Google Calendar, снепшоты
+├── application/      оркестрация use case: порты + сервисы синхронизации и аналитики
+├── presentation/     представление: HTML-отчёт, обвязка CLI
+├── config.py         AppConfig, чтение config.yaml
+├── main.py           composition root — синхронизация с календарём
+├── analytics.py      composition root — сборка HTML-отчёта
+├── tests/            pytest на доменную логику (без сети)
+└── pyproject.toml    зависимости, dev-инструменты, конфиг ruff/mypy/pytest
 ```
 
 Направление зависимостей строго внутрь: `infrastructure` реализует порты из
