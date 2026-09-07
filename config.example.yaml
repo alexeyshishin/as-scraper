@@ -48,3 +48,14 @@ reminders_minutes: [15]
 # Файлы OAuth-авторизации Google (см. README.md, как получить credentials.json)
 credentials_file: "credentials.json"
 token_file: "token.json"
+
+# Модуль «поступление» (make enrolled) — HTML-отчёт по спискам зачисленных
+# с distabit.omsu.ru. Направления/условия приёма зашиты в коде
+# (domain/admission_plan.py), здесь — только операционные настройки.
+# admission:
+#   base_url: "https://distabit.omsu.ru"
+#   # По умолчанию false: сертификат distabit не проходит TLS-проверку.
+#   # Поставь true, если в твоём окружении сертификат валиден.
+#   verify_tls: false
+#   timeout: 60
+#   report_path: "admission_report.html"

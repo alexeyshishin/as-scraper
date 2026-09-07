@@ -8,6 +8,7 @@ from typing import Callable
 
 import requests
 
+from infrastructure.distabit_api import DistabitApiError
 from infrastructure.omsu_api import OmsuApiError
 from infrastructure.omsu_directory import AmbiguousEntityError, EntityNotFoundError
 
@@ -15,14 +16,14 @@ from infrastructure.omsu_directory import AmbiguousEntityError, EntityNotFoundEr
 def run_cli(entrypoint: Callable[[], None]) -> None:
     try:
         entrypoint()
-    except (EntityNotFoundError, AmbiguousEntityError, OmsuApiError, ValueError) as exc:
+    except (EntityNotFoundError, AmbiguousEntityError, OmsuApiError, DistabitApiError, ValueError) as exc:
         print(f"Ошибка: {exc}", file=sys.stderr)
         sys.exit(1)
     except FileNotFoundError as exc:
         print(f"Не найден файл: {exc}", file=sys.stderr)
         sys.exit(1)
     except requests.RequestException as exc:
-        print(f"Сеть недоступна или eservice.omsu.ru не отвечает: {exc}", file=sys.stderr)
+        print(f"Сеть недоступна или сервер ОмГУ не отвечает: {exc}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
         print("\nПрервано.", file=sys.stderr)

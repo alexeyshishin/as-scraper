@@ -4,6 +4,7 @@ credentials.json
 token.json
 sync.log
 report.html
+admission_report.html
 data/
 __pycache__/
 *.pyc

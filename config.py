@@ -38,6 +38,23 @@ def _parse_time(value: str | None, default: time) -> time:
 
 
 @dataclass
+class AdmissionConfig:
+    base_url: str = "https://distabit.omsu.ru"
+    verify_tls: bool = False
+    timeout: int = 60
+    report_path: str = "admission_report.html"
+
+    @staticmethod
+    def load(raw: dict) -> AdmissionConfig:
+        return AdmissionConfig(
+            base_url=raw.get("base_url", "https://distabit.omsu.ru"),
+            verify_tls=bool(raw.get("verify_tls", False)),
+            timeout=int(raw.get("timeout", 60)),
+            report_path=raw.get("report_path", "admission_report.html"),
+        )
+
+
+@dataclass
 class AppConfig:
     schedule_type: ScheduleType
     query: str
@@ -50,6 +67,7 @@ class AppConfig:
     credentials_file: str
     token_file: str
     analytics: AnalyticsConfig = field(default_factory=AnalyticsConfig)
+    admission: AdmissionConfig = field(default_factory=AdmissionConfig)
 
     @staticmethod
     def load(path: str) -> AppConfig:
@@ -76,4 +94,5 @@ class AppConfig:
             credentials_file=raw.get("credentials_file", "credentials.json"),
             token_file=raw.get("token_file", "token.json"),
             analytics=AnalyticsConfig.load(raw.get("analytics") or {}),
+            admission=AdmissionConfig.load(raw.get("admission") or {}),
         )

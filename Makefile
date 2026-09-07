@@ -2,7 +2,7 @@ VENV := venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
-.PHONY: help install install-dev check sync report test lint clean
+.PHONY: help install install-dev check sync report enrolled test lint clean
 
 help:
 	@echo "make install     - создать venv и поставить зависимости"
@@ -10,6 +10,7 @@ help:
 	@echo "make check       - проверить расписание (dry-run, календарь не трогается)"
 	@echo "make sync        - синхронизировать расписание с Google Calendar"
 	@echo "make report      - собрать HTML-отчёт с аналитикой расписания"
+	@echo "make enrolled    - собрать HTML-отчёт по поступившим (модуль поступления)"
 	@echo "make test        - прогнать тесты (pytest)"
 	@echo "make lint        - ruff + mypy"
 	@echo "make clean       - удалить venv"
@@ -32,6 +33,9 @@ sync: install
 
 report: install
 	$(PYTHON) analytics.py $(ARGS)
+
+enrolled: install
+	$(PYTHON) enrollment.py $(ARGS)
 
 test: install-dev
 	$(PYTHON) -m pytest

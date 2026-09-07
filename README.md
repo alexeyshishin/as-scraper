@@ -1,21 +1,27 @@
 # omsu-schedule-scraper
 
-Скрапер расписания ОмГУ (eservice.omsu.ru) с синхронизацией в отдельный календарь Google Calendar. Работает для любой группы, преподавателя или аудитории — не только для одной конкретной группы.
+Скрапер данных ОмГУ. Два модуля поверх одного гексагонального скелета:
+
+- **Календарь** — расписание с `eservice.omsu.ru`: синхронизация в отдельный Google Calendar (`main.py`) и HTML-аналитика (`analytics.py`). Работает для любой группы, преподавателя или аудитории.
+- **Поступление** — списки зачисленных с `distabit.omsu.ru` (IT-направления, очная форма): HTML-отчёт с аналитикой (`enrollment.py`).
 
 ## Архитектура
 
 ```
 as-scraper/
-├── domain/           чистая бизнес-логика: модели, резолвер пар, семестр, диффы, метрики
-├── infrastructure/   внешний мир: API ОмГУ, справочник, Google Calendar, снепшоты
-├── application/      оркестрация use case: порты + сервисы синхронизации и аналитики
-├── presentation/     представление: HTML-отчёт, обвязка CLI
+├── domain/           чистая бизнес-логика: модели, резолвер пар, семестр, диффы, метрики, поступление
+├── infrastructure/   внешний мир: API расписания, справочник, Google Calendar, снепшоты, distabit
+├── application/      оркестрация use case: порты + сервисы синхронизации, аналитики, поступления
+├── presentation/     представление: HTML-отчёты (расписание и поступление), обвязка CLI
 ├── config.py         AppConfig, чтение config.yaml
-├── main.py           composition root — синхронизация с календарём
-├── analytics.py      composition root — сборка HTML-отчёта
+├── main.py           composition root — синхронизация расписания с календарём
+├── analytics.py      composition root — HTML-отчёт по расписанию
+├── enrollment.py     composition root — HTML-отчёт по поступившим
 ├── tests/            pytest на доменную логику (без сети)
 └── pyproject.toml    зависимости, dev-инструменты, конфиг ruff/mypy/pytest
 ```
+
+Модули не зависят друг от друга: `enrollment.py` и `main.py`/`analytics.py` — независимые composition root'ы, разделяющие общий плоский скелет `domain/application/infrastructure/presentation`.
 
 Направление зависимостей строго внутрь: `infrastructure` реализует порты из
 `application/ports.py` структурно (без наследования), поэтому `application` и
@@ -89,6 +95,25 @@ analytics:
   snapshot_horizon_days: 90   # какой горизонт вперёд отслеживать на отмены/переносы
   semester_gap_days: 21       # разрыв в днях, который считается концом семестра/каникулами
   report_path: "report.html"
+```
+
+## Поступление
+
+```bash
+make enrolled              # собрать admission_report.html и открыть его в браузере
+make enrolled ARGS=--no-open   # собрать, но не открывать
+```
+
+Строит самодостаточную HTML-страницу по спискам зачисленных на IT-направления (очная форма, бакалавриат и специалитет): всего поступило, соотношение бюджет/платно, заполняемость бюджетных мест по направлениям и детальные таблицы «условие приёма → зачислено / мест».
+
+Направления и условия приёма зашиты в `domain/admission_plan.py` (данные кампании 2026). Операционные настройки — необязательная секция `admission` в `config.yaml`:
+
+```yaml
+admission:
+  base_url: "https://distabit.omsu.ru"
+  verify_tls: false   # по умолчанию выключено: сертификат distabit не проходит проверку
+  timeout: 60
+  report_path: "admission_report.html"
 ```
 
 ## Источники данных

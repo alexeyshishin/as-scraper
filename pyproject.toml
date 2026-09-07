@@ -27,7 +27,7 @@ dev = [
 
 # Плоская раскладка: пакеты-слои лежат в корне репозитория.
 [tool.setuptools]
-py-modules = ["config", "main", "analytics"]
+py-modules = ["config", "main", "analytics", "enrollment"]
 packages = ["domain", "application", "infrastructure", "presentation"]
 
 [tool.ruff]
@@ -44,7 +44,7 @@ ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.9"
-files = ["domain", "application", "infrastructure", "presentation", "config.py", "main.py", "analytics.py"]
+files = ["domain", "application", "infrastructure", "presentation", "config.py", "main.py", "analytics.py", "enrollment.py"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 no_implicit_optional = true

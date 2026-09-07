@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
+from domain.admission import EnrollmentRow
 from domain.models import (
     CalendarEvent,
     ChangeEvent,
@@ -47,3 +48,9 @@ class SnapshotStorePort(Protocol):
     def append_change_events(self, events: list[ChangeEvent]) -> None: ...
 
     def load_change_log(self) -> list[ChangeEvent]: ...
+
+
+class EnrollmentPort(Protocol):
+    """Источник списков зачисленных (по условиям приёма направлений)."""
+
+    def fetch_rows(self) -> list[EnrollmentRow]: ...
