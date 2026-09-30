@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Callable
 
 from application.ports import CalendarPort, SchedulePort
 from domain.event_factory import build_event
@@ -37,7 +38,11 @@ class ScheduleSyncService:
         self._timezone = timezone
         self._reminders_minutes = reminders_minutes or []
 
-    def run(self, dry_run: bool = False) -> SyncResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        on_progress: Callable[[str, int, int], None] | None = None,
+    ) -> SyncResult:
         lessons = self._omsu_client.fetch_lessons()
 
         if self._sync_from_today:
@@ -53,7 +58,7 @@ class ScheduleSyncService:
 
         stats = None
         if not dry_run:
-            stats = self._calendar_gateway.sync(events)
+            stats = self._calendar_gateway.sync(events, on_progress)
 
         return SyncResult(
             stats=stats,

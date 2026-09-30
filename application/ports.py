@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol
+from typing import Callable, Protocol
 
 from domain.admission import EnrollmentRow
 from domain.models import (
@@ -35,7 +35,11 @@ class DirectoryPort(Protocol):
 class CalendarPort(Protocol):
     """Идемпотентная синхронизация событий во внешний календарь."""
 
-    def sync(self, events: list[CalendarEvent]) -> dict[str, int]: ...
+    def sync(
+        self,
+        events: list[CalendarEvent],
+        on_progress: Callable[[str, int, int], None] | None = None,
+    ) -> dict[str, int]: ...
 
 
 class SnapshotStorePort(Protocol):

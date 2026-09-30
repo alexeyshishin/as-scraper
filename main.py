@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from typing import Callable
 
 from application.sync_service import ScheduleSyncService
 from config import AppConfig
@@ -16,6 +17,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("omsu_sync")
 
 DEFAULT_CALENDAR_PREFIX = "ОмГУ"
+PROGRESS_REPORT_EVERY = 5
+
+ACTION_LABELS = {
+    "created": "создано",
+    "updated": "обновлено",
+    "unchanged": "без изменений",
+    "deleted": "удалено",
+}
+
+
+def make_progress_reporter() -> Callable[[str, int, int], None]:
+    def report(action: str, done: int, total: int) -> None:
+        if done % PROGRESS_REPORT_EVERY == 0 or done == total:
+            logger.info("[%d/%d] %s", done, total, ACTION_LABELS.get(action, action))
+
+    return report
 
 
 def print_ambiguous_report(ambiguous: list[tuple[str, list[str]]]) -> None:
@@ -65,12 +82,14 @@ def main() -> None:
         reminders_minutes=config.reminders_minutes,
     )
 
-    result = service.run(dry_run=args.dry_run)
-    print_ambiguous_report(result.ambiguous)
-
     if args.dry_run:
+        result = service.run(dry_run=True)
+        print_ambiguous_report(result.ambiguous)
         print(f"[dry-run] Событий к синхронизации: {result.total_events}. Google Calendar не тронут.")
         return
+
+    result = service.run(dry_run=False, on_progress=make_progress_reporter())
+    print_ambiguous_report(result.ambiguous)
 
     stats = result.stats
     assert stats is not None  # stats заполняется всегда, кроме dry-run (обработан выше)

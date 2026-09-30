@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Callable
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -23,29 +24,45 @@ class GoogleCalendarGateway:
         self._service = None
         self._calendar_id: str | None = None
 
-    def sync(self, events: list[CalendarEvent]) -> dict[str, int]:
+    def sync(
+        self,
+        events: list[CalendarEvent],
+        on_progress: Callable[[str, int, int], None] | None = None,
+    ) -> dict[str, int]:
         service = self._get_service()
         calendar_id = self._get_calendar_id()
         existing = self._list_managed_events()
         desired = {event.sync_key: self._to_google_body(event) for event in events}
+        to_delete = [key for key in existing if key not in desired]
 
         stats = {"created": 0, "updated": 0, "deleted": 0, "unchanged": 0}
+        total = len(desired) + len(to_delete)
+        done = 0
 
         for key, body in desired.items():
             ev = existing.get(key)
             if ev is None:
                 service.events().insert(calendarId=calendar_id, body=body).execute()
                 stats["created"] += 1
+                action = "created"
             elif not self._content_equal(ev, body):
                 service.events().update(calendarId=calendar_id, eventId=ev["id"], body=body).execute()
                 stats["updated"] += 1
+                action = "updated"
             else:
                 stats["unchanged"] += 1
+                action = "unchanged"
+            done += 1
+            if on_progress is not None:
+                on_progress(action, done, total)
 
-        for key, ev in existing.items():
-            if key not in desired:
-                service.events().delete(calendarId=calendar_id, eventId=ev["id"]).execute()
-                stats["deleted"] += 1
+        for key in to_delete:
+            ev = existing[key]
+            service.events().delete(calendarId=calendar_id, eventId=ev["id"]).execute()
+            stats["deleted"] += 1
+            done += 1
+            if on_progress is not None:
+                on_progress("deleted", done, total)
 
         return stats
 
